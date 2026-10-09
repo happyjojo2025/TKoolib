@@ -31,19 +31,15 @@ struct LoadMoreFooter<Item: Identifiable>: View {
     var body: some View {
         Group {
             switch model.loadMorePhase {
-            case .idle:
-                HStack(spacing: 8) {
-                    ProgressView()
-                    Text(appearance.loadingText)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-            case .loading:
-                HStack(spacing: 8) {
-                    ProgressView()
-                    Text(appearance.loadingText)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+            case .idle, .loading:
+                // `showsFooterLoading == false`：首屏已有 loading mask，footer 不再重复提示
+                if appearance.showsFooterLoading {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                        Text(appearance.loadingText)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             case .failed(let message):
                 VStack(spacing: 8) {
@@ -86,15 +82,14 @@ struct PagedListPlaceholder<Item: Identifiable>: View {
     var appearance: PagedListAppearance = .default
     
     var body: some View {
-        if model.items.isEmpty {
+        // 首屏加载中（不管列表里有没有数据）都盖 loading mask；
+        // 失败 / 空态仍只在列表为空时显示，避免刷新失败时把已有内容盖住。
+        if model.phase == .loadingFirstPage {
+            loadingPlaceholder
+        } else if model.items.isEmpty {
             switch model.phase {
-            case .idle, .loadingFirstPage:
-                if let loadingView = appearance.loadingView {
-                    loadingView
-                } else {
-                    ProgressView()
-                        .controlSize(.large)
-                }
+            case .idle:
+                loadingPlaceholder
             case .failed(let message):
                 if let failedView = appearance.failedView {
                     failedView(message)
@@ -116,7 +111,18 @@ struct PagedListPlaceholder<Item: Identifiable>: View {
                 } else {
                     ContentUnavailableView(appearance.emptyTitle, systemImage: "tray")
                 }
+            case .loadingFirstPage:
+                EmptyView()
             }
+        }
+    }
+
+    @ViewBuilder
+    private var loadingPlaceholder: some View {
+        if let loadingView = appearance.loadingView {
+            loadingView
+        } else {
+            ProgressView().controlSize(.large)
         }
     }
 }

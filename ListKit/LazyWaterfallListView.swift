@@ -58,6 +58,16 @@ public struct LazyWaterfallListView<Item: Identifiable, Cell: View>: View {
   }
 
   public var body: some View {
+    // 用 GeometryReader 直接拿容器宽度。
+    // 原来挂 `.onGeometryChange` 在本工程的层级里测到的宽度始终是 0（列宽算不出来 → 整页空白），
+    // 换成 GeometryReader 后宽度稳定拿到。
+    GeometryReader { proxy in
+      waterfall(containerWidth: proxy.size.width)
+    }
+  }
+
+  @ViewBuilder
+  private func waterfall(containerWidth measuredWidth: CGFloat) -> some View {
     ScrollView {
       VStack(spacing: 0) {
         if columnWidth > 0 {
@@ -73,14 +83,12 @@ public struct LazyWaterfallListView<Item: Identifiable, Cell: View>: View {
         LoadMoreFooter(model: model, triggersLoad: false, appearance: appearance)
       }
     }
-    .onGeometryChange(for: CGFloat.self) { proxy in
-      proxy.size.width
-    } action: { width in
-      containerWidth = width
-    }
+    .onAppear { containerWidth = measuredWidth }
+    .onChange(of: measuredWidth) { _, w in containerWidth = w }
     .refreshable {
       await model.refresh()
     }
+
     .overlay {
       PagedListPlaceholder(model: model, appearance: appearance)
     }

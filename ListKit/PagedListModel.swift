@@ -83,6 +83,8 @@ public final class PagedListModel<Item: Identifiable> {
   @ObservationIgnored private var seenIDs: Set<Item.ID> = []
   /// 并发护栏：一次只允许一个请求在飞。
   @ObservationIgnored private var isLoading = false
+  /// `autoLoadOnce()` 是否已经放过行（生命周期级的"进页面只加载一次"）
+  @ObservationIgnored private var hasAutoLoadedOnce = false
 
   public init(
     pageSize: Int = 20,
@@ -105,9 +107,26 @@ public final class PagedListModel<Item: Identifiable> {
   // MARK: 首屏
 
   /// 只在还没加载过时加载首屏（可以直接挂在 `.task` 上）。
+  ///
+  /// 语义是"首屏初始化一次"：只要 `phase` 已经从 `.idle` 走出去就不再重复。**失败后不会再试**
+  /// （重试走 `retryInitialLoad()`）。
   public func loadInitialIfNeeded() async {
     guard phase == .idle else { return }
     await loadFirstPage(keepingItemsOnFailure: false)
+  }
+
+  /// 生命周期级的"进页面只加载一次"。
+  ///
+  /// 与 `loadInitialIfNeeded()` 的区别：多一个**只认一次的标记**，即使 SwiftUI 因为视图
+  /// 重建 / 切 tab 再次触发 `.task`，这里也只放行第一次。
+  /// 适合"缓存型 tab"（切走不销毁、切回来 `.task` 会被再跑一遍）——不希望在切回时重新拉数据。
+  ///
+  /// 注意：它只管**自动进入时**的那一次。用户主动刷新（下拉 `refresh()`、切筛选条件、
+  /// 重试 `retryInitialLoad()`）都不受这个标记约束。
+  public func autoLoadOnce() async {
+    guard !hasAutoLoadedOnce else { return }
+    hasAutoLoadedOnce = true
+    await loadInitialIfNeeded()
   }
 
   /// 首屏失败后的重试（用户点「重试」）。

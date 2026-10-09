@@ -33,6 +33,12 @@ public struct PagedListAppearance {
 
     /// footer 加载中
     public var loadingText: String
+
+    /// 是否在 **footer** 里显示加载提示（转圈 + `loadingText`）。
+    ///
+    /// 典型场景：首屏在列表上方盖了一层 loading mask 时，footer 的「加载中…」是重复的，
+    /// 把它关掉即可（`showsFooterLoading: false`）。默认 `true`，与组件原有表现一致。
+    public var showsFooterLoading: Bool
     /// footer 失败重试按钮
     public var retryText: String
     /// footer 到底提示（列表为空时不显示）
@@ -53,6 +59,7 @@ public struct PagedListAppearance {
 
     public init(
         loadingText: String = "加载中…",
+        showsFooterLoading: Bool = true,
         retryText: String = "重试",
         exhaustedText: String = "没有更多了",
         failedTitle: String = "加载失败",
@@ -62,6 +69,7 @@ public struct PagedListAppearance {
         failedView: ((String) -> AnyView)? = nil
     ) {
         self.loadingText = loadingText
+        self.showsFooterLoading = showsFooterLoading
         self.retryText = retryText
         self.exhaustedText = exhaustedText
         self.failedTitle = failedTitle
